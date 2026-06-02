@@ -48,14 +48,15 @@ nav .sep{color:#aaa;margin:0 5px}
 .viewer-js{display:none;position:fixed;inset:0;z-index:100;flex-direction:column;background:#000}
 .viewer-js.open{display:flex}
 
-.v-main-js{flex:1 1 0;min-height:0;display:flex;overflow-x:scroll;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:relative}
-.v-main-js::-webkit-scrollbar{display:none}
-.v-slide-js{flex:0 0 100%;height:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center}
+.v-main-js{flex:1 1 0;min-height:0;overflow:hidden;position:relative}
+.v-track-js{display:flex;height:100%;will-change:transform}
+.v-track-js.animate{transition:transform .28s ease}
+.v-slide-js{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center}
 .v-slide-js img{max-width:100%;max-height:100%;object-fit:contain}
 
-.filmstrip-js{flex:0 0 96px;display:flex;align-items:center;gap:6px;overflow-x:scroll;overflow-y:hidden;padding:10px 12px;background:rgba(0,0,0,.85);border-top:1px solid rgba(255,255,255,.07);scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filmstrip-js{flex:0 0 96px;display:flex;align-items:center;gap:6px;overflow-x:scroll;overflow-y:hidden;padding:10px 12px;background:rgba(0,0,0,.85);border-top:1px solid rgba(255,255,255,.07);-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .filmstrip-js::-webkit-scrollbar{display:none}
-.thumb-js{flex:0 0 auto;width:64px;height:64px;scroll-snap-align:center;border-radius:4px;overflow:hidden;border:2px solid transparent;opacity:.55;transition:width .2s,height .2s,opacity .2s,border-color .15s;display:block;cursor:pointer}
+.thumb-js{flex:0 0 auto;width:64px;height:64px;border-radius:4px;overflow:hidden;border:2px solid transparent;opacity:.55;transition:width .2s,height .2s,opacity .2s,border-color .15s;display:block;cursor:pointer}
 .thumb-js img{width:100%;height:100%;object-fit:cover;display:block}
 .thumb-js.on{width:72px;height:72px;opacity:1;border-color:#fff}
 """
@@ -87,6 +88,24 @@ VIEWER_JS = """
   var vmain = document.createElement('div');
   vmain.className = 'v-main-js';
 
+  var track = document.createElement('div');
+  track.className = 'v-track-js';
+  vmain.appendChild(track);
+
+  var prevBtn = document.createElement('a');
+  prevBtn.className = 'v-arrow prev';
+  prevBtn.href = '#';
+  prevBtn.innerHTML = '&#8249;';
+  prevBtn.addEventListener('click', function(e){ e.preventDefault(); activate(cur-1, true); });
+  vmain.appendChild(prevBtn);
+
+  var nextBtn = document.createElement('a');
+  nextBtn.className = 'v-arrow next';
+  nextBtn.href = '#';
+  nextBtn.innerHTML = '&#8250;';
+  nextBtn.addEventListener('click', function(e){ e.preventDefault(); activate(cur+1, true); });
+  vmain.appendChild(nextBtn);
+
   var film = document.createElement('div');
   film.className = 'filmstrip-js';
 
@@ -96,7 +115,7 @@ VIEWER_JS = """
     var img = document.createElement('img');
     img.alt = src;
     slide.appendChild(img);
-    vmain.appendChild(slide);
+    track.appendChild(slide);
 
     var th = document.createElement('div');
     th.className = 'thumb-js';
@@ -113,10 +132,9 @@ VIEWER_JS = """
   vjs.appendChild(film);
   document.body.appendChild(vjs);
 
-  var slides = vmain.querySelectorAll('.v-slide-js');
+  var slides = track.querySelectorAll('.v-slide-js');
   var thumbs = film.querySelectorAll('.thumb-js');
   var cur = 0;
-  var locked = false;
   var loaded = {};
 
   function loadSlide(i){
@@ -132,27 +150,33 @@ VIEWER_JS = """
     });
   }
 
-  function activate(i, scrollMain){
+  function moveTrack(i, animate){
+    track.classList.toggle('animate', !!animate);
+    track.style.transform = 'translateX(' + (-i * 100) + '%)';
+  }
+
+  function centerThumb(i){
+    var t = thumbs[i];
+    var target = t.offsetLeft - (film.clientWidth - t.offsetWidth) / 2;
+    film.scrollTo({left: target, behavior:'smooth'});
+  }
+
+  function activate(i, animate){
+    if(i < 0) i = 0;
+    if(i > n-1) i = n-1;
     cur = i;
     loadSlide(i);
+    moveTrack(i, animate);
     thumbs.forEach(function(t,j){
       t.classList.toggle('on', j===i);
     });
-    thumbs[i].scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
-    if(scrollMain){
-      locked = true;
-      vmain.scrollTo({left: i * vmain.clientWidth, behavior:'smooth'});
-      setTimeout(function(){ locked=false; }, 500);
-    }
+    centerThumb(i);
   }
 
   function open(i){
     vjs.classList.add('open');
     document.body.style.overflow = 'hidden';
-    locked = true;
-    vmain.scrollLeft = i * vmain.clientWidth;
     activate(i, false);
-    setTimeout(function(){ locked=false; }, 100);
   }
 
   function close(){
@@ -161,19 +185,32 @@ VIEWER_JS = """
     history.pushState('', document.title, window.location.pathname);
   }
 
-  /* 主图滚动 → 联动 filmstrip */
-  var ticking = false;
-  vmain.addEventListener('scroll', function(){
-    if(locked) return;
-    if(!ticking){
-      requestAnimationFrame(function(){
-        var i = Math.round(vmain.scrollLeft / vmain.clientWidth);
-        if(i !== cur) activate(i, false);
-        ticking = false;
-      });
-      ticking = true;
+  var touchX = null, touchY = null, swiping = false;
+  vmain.addEventListener('touchstart', function(e){
+    if(e.touches.length !== 1) { touchX = null; return; }
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    swiping = false;
+  }, {passive:true});
+
+  vmain.addEventListener('touchmove', function(e){
+    if(touchX === null) return;
+    var dx = e.touches[0].clientX - touchX;
+    var dy = e.touches[0].clientY - touchY;
+    if(!swiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) swiping = true;
+    if(swiping && e.cancelable) e.preventDefault();
+  }, {passive:false});
+
+  vmain.addEventListener('touchend', function(e){
+    if(touchX === null) return;
+    var dx = e.changedTouches[0].clientX - touchX;
+    var dy = e.changedTouches[0].clientY - touchY;
+    touchX = null;
+    var THRESH = 40;
+    if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > THRESH){
+      activate(cur + (dx < 0 ? 1 : -1), true);
     }
-  });
+  }, {passive:true});
 
   /* 瀑布流点击拦截 */
   document.querySelectorAll('.gallery-item').forEach(function(a, i){
@@ -183,17 +220,18 @@ VIEWER_JS = """
     });
   });
 
-  /* 键盘 */
   document.addEventListener('keydown', function(e){
     if(!vjs.classList.contains('open')) return;
-    if(e.key==='ArrowRight'||e.key==='ArrowDown') activate((cur+1)%n, true);
-    else if(e.key==='ArrowLeft'||e.key==='ArrowUp') activate((cur-1+n)%n, true);
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); activate(cur+1, true); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); activate(cur-1, true); }
     else if(e.key==='Escape') close();
   });
 
+  window.addEventListener('resize', function(){ moveTrack(cur, false); });
+
   /* 点击遮罩关闭（点图片外区域） */
   vmain.addEventListener('click', function(e){
-    if(e.target === vmain) close();
+    if(e.target === vmain || e.target === track) close();
   });
 })();
 """
