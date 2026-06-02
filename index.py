@@ -249,11 +249,6 @@ def generate_index(dirpath: Path, root: Path):
         for i, img in enumerate(images):
             prev_i = (i-1) % n
             next_i = (i+1) % n
-            thumbs = "\n".join(
-                f'<a class="thumb-ns{" active" if j==i else ""}" href="#v{j}" title="{images[j].name}">'
-                f'<img src="{images[j].name}" loading="lazy"></a>'
-                for j in range(n)
-            )
             vs.append(f"""
 <div class="viewer" id="v{i}">
   <a class="v-close" href="#">✕</a>
@@ -262,7 +257,6 @@ def generate_index(dirpath: Path, root: Path):
     <img src="{img.name}" alt="{img.name}">
     <a class="v-arrow next" href="#v{next_i}">&#8250;</a>
   </div>
-  <div class="filmstrip-noscript">{thumbs}</div>
 </div>""")
         viewers_html = "\n".join(vs)
 
