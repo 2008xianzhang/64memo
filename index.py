@@ -201,14 +201,17 @@ VIEWER_JS = """
 def breadcrumb(rel: Path, is_root: bool) -> str:
     if is_root: return ""
     parts = list(rel.parts)
-    html = '<a href="/">/</a>'
+    root_href = '../' * len(parts) + 'index.html'
+    html = f'<a href="{root_href}">/</a>'
     for i, part in enumerate(parts):
-        depth = len(parts) - i
+        depth = len(parts) - 1 - i
         href = '../' * depth + 'index.html'
+        # 首个 part 用空 sep 仅取间隙（避免与根 "/" 重复斜杠）；其余用带斜杠的分隔符
+        sep = '<span class="sep"></span>' if i == 0 else '<span class="sep">/</span>'
         if i < len(parts)-1:
-            html += f'<span class="sep">/</span><a href="{href}">{part}</a>'
+            html += f'{sep}<a href="{href}">{part}</a>'
         else:
-            html += f'<span class="sep">/</span><span>{part}</span>'
+            html += f'{sep}<span>{part}</span>'
     return f'<nav>{html}</nav>'
 
 def generate_index(dirpath: Path, root: Path):
