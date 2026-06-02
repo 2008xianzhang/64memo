@@ -6,16 +6,16 @@ IMAGE_EXTS = {'.jpg','.jpeg','.png','.gif','.webp','.JPG','.JPEG','.PNG'}
 
 CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#111;color:#eee;font-family:sans-serif}
+body{background:transparent;color:#222;font-family:sans-serif}
 
-nav{padding:10px 16px;background:#1a1a1a;border-bottom:1px solid #2a2a2a;font-size:13px;position:sticky;top:0;z-index:5}
-nav a{color:#888;text-decoration:none}
-nav a:hover{color:#fff}
-nav .sep{color:#444;margin:0 5px}
+nav{padding:10px 16px;background:rgba(0,0,0,.04);border-bottom:1px solid rgba(0,0,0,.12);font-size:13px;position:sticky;top:0;z-index:5}
+nav a{color:#666;text-decoration:none}
+nav a:hover{color:#000}
+nav .sep{color:#aaa;margin:0 5px}
 
 .folders{padding:16px;display:flex;flex-wrap:wrap;gap:10px}
-.folder-link{display:flex;align-items:center;gap:8px;padding:9px 15px;background:#1e1e1e;border-radius:8px;text-decoration:none;color:#ccc;font-size:14px;border:1px solid #2a2a2a}
-.folder-link:hover{background:#252525;border-color:#444}
+.folder-link{display:flex;align-items:center;gap:8px;padding:9px 15px;background:rgba(0,0,0,.04);border-radius:8px;text-decoration:none;color:#333;font-size:14px;border:1px solid rgba(0,0,0,.12)}
+.folder-link:hover{background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.25)}
 .folder-link::before{content:"📁"}
 
 .gallery{columns:4 180px;column-gap:6px;padding:12px}
