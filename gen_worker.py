@@ -16,7 +16,30 @@ IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 WORKER_TEMPLATE = """\
 // 自动生成，请勿手动编辑。重新生成：python3 gen_worker.py
+// 访问 /random 时返回内嵌随机图片的 HTML 页面，URL 保持在 /random，
+// 刷新即可换图；右键图片可看到原始文件 URL。
 const IMAGES = {images};
+
+const esc = (s) => s.replace(/[&<>"]/g, (c) => (
+  {{ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }}[c]
+));
+
+const PAGE = (src, title) => `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${{esc(title)}}</title>
+<style>
+  html, body {{ margin: 0; height: 100%; background: #000; }}
+  body {{ display: flex; align-items: center; justify-content: center; }}
+  img {{ max-width: 100%; max-height: 100vh; object-fit: contain; }}
+</style>
+</head>
+<body>
+<img src="${{src}}" alt="${{esc(title)}}">
+</body>
+</html>`;
 
 export default {{
   async fetch(request, env) {{
@@ -28,10 +51,15 @@ export default {{
 
     const pick = IMAGES[Math.floor(Math.random() * IMAGES.length)];
     const encoded = pick.split("/").map(encodeURIComponent).join("/");
-    const asset = await env.ASSETS.fetch(new URL("/" + encoded, url.origin));
-    const resp = new Response(asset.body, asset);
-    resp.headers.set("Cache-Control", "no-store, must-revalidate");
-    return resp;
+    // 标题取文件名（去掉目录部分）。
+    const name = pick.split("/").pop();
+    // 返回内嵌该图片的页面；禁用缓存，否则刷新命中缓存看不到换图。
+    return new Response(PAGE("/" + encoded, name), {{
+      headers: {{
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store, must-revalidate",
+      }},
+    }});
   }},
 }};
 """
