@@ -16,7 +16,6 @@ IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
 
 WORKER_TEMPLATE = """\
 // 自动生成，请勿手动编辑。重新生成：python3 gen_worker.py
-// 访问 /random 时随机 302 跳转到一张 64memo 存档图片。
 const IMAGES = {images};
 
 export default {{
@@ -28,10 +27,11 @@ export default {{
     }}
 
     const pick = IMAGES[Math.floor(Math.random() * IMAGES.length)];
-    // 逐段编码，保留 "/" 分隔符；避免 "+"、空格等被误解析。
     const encoded = pick.split("/").map(encodeURIComponent).join("/");
-    const target = new URL("/" + encoded, url.origin);
-    return Response.redirect(target.toString(), 302);
+    const asset = await env.ASSETS.fetch(new URL("/" + encoded, url.origin));
+    const resp = new Response(asset.body, asset);
+    resp.headers.set("Cache-Control", "no-store, must-revalidate");
+    return resp;
   }},
 }};
 """
