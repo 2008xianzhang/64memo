@@ -259,7 +259,7 @@ def generate_index(dirpath: Path, root: Path):
 
     rel     = dirpath.relative_to(root)
     is_root = rel == Path('.')
-    title   = dirpath.name if not is_root else "Gallery"
+    title   = dirpath.name if not is_root else "64memo Archive"
 
     nav_html    = breadcrumb(rel, is_root)
     folder_html = ""
